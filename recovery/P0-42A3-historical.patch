@@ -1,0 +1,85 @@
+--- a/Code.gs
++++ b/Code.gs
+@@ -963,7 +963,7 @@
+ }
+ function setDashboardBlockV4(s,row,rows,height){const width=10,data=Array.from({length:height},(_,i)=>Array.from({length:width},(_,j)=>rows[i]&&rows[i][j]!==undefined?rows[i][j]:''));for(const r of data)if(typeof r[0]==='string')r[0]=r[0].replace(/^(20\d{2}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/,'$1\n$2');s.getRange(row,1,height,width).setValues(data);s.getRange(row,10,height,1).setRichTextValues(data.map(r=>[/^https?:\/\//.test(String(r[9]))?SpreadsheetApp.newRichTextValue().setText('공고 원문 ↗').setLinkUrl(r[9]).build():SpreadsheetApp.newRichTextValue().setText(String(r[9]||'')).build()]));if(height>1)s.setRowHeights(row,height,64);}
+ function refreshUserDashboardV4(ss){ensureOriginsV4(ss);let s=ss.getSheetByName(USER_SHEET4);if(!s){s=ss.insertSheet(USER_SHEET4);formatUserDashboardV4(s);}const data=dashboardDataV4(readV4(ss.getSheetByName('공고원장')).slice(4),readV4(ss.getSheetByName('공고판정')).slice(1),readV4(ss.getSheetByName('지역정책')).slice(1),readV4(ss.getSheetByName('발견구분')).slice(1),readV4(ss.getSheetByName('발송대기')).slice(1),Date.now(),todayKst(),validAliasesV4(ss,readV4(ss.getSheetByName('공고원장')).slice(4))),m=data.metrics;
+- const fullDetails=new Map(readV4(ss.getSheetByName('공고상세')).slice(1).map(r=>[r[15],r]));for(const r of data.schedule){try{const d=JSON.parse((fullDetails.get(r[9])||[])[16]||'{}');if(d.endTime)r[8]=d.endTime+' KST · 주택형별 일정 근거 확인';}catch(e){}}s.getRange('A1').setValue('🏡 신혼집 청약 현황판');s.getRange('A2').setValue('서울·경기 우선 · 초기 백필 제외 · 기간/자격 미확인 ≠ 신청 가능 · 갱신 '+nowKst()+' KST · 후처리 10분 주기');
++ const fullDetails=new Map(readV4(ss.getSheetByName('공고상세')).slice(1).map(r=>[r[15],r]));for(const r of data.schedule){try{const d=JSON.parse((fullDetails.get(r[9])||[])[16]||'{}');if(d.endTime)r[8]=d.endTime+' KST · 주택형별 일정 근거 확인';}catch(e){}}s.getRange('A1').setValue('🏡 신혼집 청약 현황판');
+  for(const [range,value] of [['A4','최근 24시간 신규 발견'],['D4','최근 7일 신규(오늘 포함)'],['G4','유효 ★중요★'],['I4','현재 접수 중'],['A5',m.day],['D5',m.week],['G5',m.important],['I5',m.accepting],['A7','직전 7일 대비'],['D7','현재/미확인 ★검토 필요★'],['G7','7일 내 접수 시작'],['I7','접수 마감 D-3·D-1'],['A8',(m.delta>=0?'+':'')+m.delta],['D8',m.review],['G8',m.starting],['I8',m.closing]])s.getRange(range).setValue(value);
+  s.getRange('A5:J5').setHorizontalAlignment('center');s.getRange('A8:J8').setHorizontalAlignment('center');s.getRange('A10').setValue('지역 확인 필요 '+m.regionUnknown+'건 별도 검토 · 현재/향후 접수는 확인된 날짜 기준 · 알림 후보와 신청자격은 별도');
+  setDashboardBlockV4(s,12,[['최초 발견(KST)','공식 게시일','기관','최근 발견 모집공고','지역','공급유형','발견/모집 구분','중요도','접수기간','공식 원문']],1);setDashboardBlockV4(s,13,data.newest.length?data.newest:[['초기 백필을 제외한 서울·경기 신규 발견 없음']],20);
+@@ -971,7 +971,13 @@
+  setDashboardBlockV4(s,58,[['모집상태','접수 시작일','접수 마감일','청약 일정 · 마감된 공고 제외','위치','공급유형','마감 D-day','중요도','마감시각','공식 원문']],1);setDashboardBlockV4(s,59,data.schedule,20);
+  setDashboardBlockV4(s,81,[['최초 발견(KST)','공식 게시일','기관','지역 확인 필요 · 임의 제외 금지','공식 지역','공급유형','모집 구분','확인 상태','확인할 항목','공식 원문']],1);setDashboardBlockV4(s,82,data.unknown,10);
+  const rows=Array.from({length:12},()=>Array(10).fill(''));rows[0]=['기관(최근7일)','건수','','지역(최근7일)','건수','','공급유형(누적 대상)','건수','발견일(최근7일)','건수'];for(const [col,items] of [[0,data.agencies],[3,data.regions],[6,data.supply],[8,data.daily]])items.slice(0,11).forEach((r,i)=>{rows[i+1][col]=r[0];rows[i+1][col+1]=r[1];});s.getRange(95,1,12,10).setValues(rows);
+- PropertiesService.getScriptProperties().setProperty('USER_DASHBOARD4',nowKst());ss.getSheetByName('개발검증').appendRow(['4차 사용자 현황판','실데이터 집계',nowKst()+' | '+JSON.stringify(m)+' | 고유ID·최초발견 기준; 초기적재 제외']);return data;
++ const stamp=nowKst();
++ ss.getSheetByName('개발검증').appendRow(['4차 사용자 현황판','실데이터 집계',stamp+' | '+JSON.stringify(m)+' | 고유ID·최초발견 기준; 초기적재 제외']);
++ SpreadsheetApp.flush();
++ s.getRange('A2').setValue('서울·경기 우선 · 초기 백필 제외 · 기간/자격 미확인 ≠ 신청 가능 · 갱신 '+stamp+' KST · 후처리 10분 주기');
++ SpreadsheetApp.flush();
++ PropertiesService.getScriptProperties().setProperty('USER_DASHBOARD4',stamp);
++ return data;
+ }
+ function formatUserDashboardV4(s){
+  s.setFrozenRows(2);s.setHiddenGridlines(true);s.setTabColor('#4b7967');s.getRange('A1:J2').setBackground('#edf4ef');s.getRange('A1:J1').merge().setFontSize(22).setFontWeight('bold').setFontColor('#244b3d');s.getRange('A2:J2').merge().setFontSize(10).setWrap(true);s.setRowHeight(1,44);s.setRowHeight(2,40);
+@@ -1127,17 +1133,16 @@
+  const lock=LockService.getScriptLock();if(!lock.tryLock(1000)){console.log('LOCK_BUSY42: 기존 목록 우선·다음 예약 재시도');return;}
+  const start=Date.now(),p=PropertiesService.getScriptProperties();V4_MODE='후처리';V4_END=start+180000;V42_AUTO=!!(e&&e.triggerUid);let ss,result='시작';
+  try{ss=SpreadsheetApp.openById(SPREADSHEET_ID);ensureV4(ss);detectWorkerAbortV4(ss);if(p.getProperty('RELEASE42')!=='42.A3'){p.setProperty('STARTED42',nowKst());p.setProperty('RELEASE42','42.A3');}if(V42_AUTO&&!p.getProperty('FIRST_AUTO42A_42.A3'))p.setProperty('FIRST_AUTO42A_42.A3',nowKst());if(V42_AUTO)p.setProperty('WORKER_AUTO4',nowKst());upsertTable(ss.getSheetByName('작업운영'),[['후처리',nowKst(),p.getProperty('WORKER_OK4')||'','시도중','4.2 목록 우선·분리 예산',p.getProperty('WORKER_AUTO4')||'']]);
+-  // 42.A3.2: 4.2A derived phase 0 requires about 123 sec; running GH/detail first
+-  // can starve it forever. Reserve ONE EXISTING worker tick for that phase.
+-  // No new triggers or resets; all existing status/ledger keys remain intact.
+-  const derivedPhase=Number(p.getProperty('DERIVED_STEP42A')||0)%4;
+-  const derivedCost=Number(p.getProperty('DERIVED_COST42A_공고판정')||0);
++  // Give all derived phases a turn before GH and analysis can consume the worker window.
+   const lastDedicated=Number(p.getProperty('DERIVED_DEDICATED_AT42A32')||0);
+-  const dedicated=derivedPhase===0&&derivedCost>=85000&&Date.now()-lastDedicated>=1200000;
++  const admission=Date.now()-lastDedicated>=1200000?derivedAdmission42A(p,Date.now()):null;
++  const dedicated=admission&&admission.timeFits&&admission.budget.canRun;
++  let workerCompleted=true;
+   if(dedicated){
+    p.setProperty('DERIVED_DEDICATED_AT42A32',String(Date.now()));
+    const done=runDerived42A(ss);
+-   result=done?'공고판정 파생 전용 완료·기존 GH/상세 다음 예약':'공고판정 파생 전용 시도·기존 상태/커서 보존';
++   workerCompleted=done;
++   result=done?'파생 '+admission.step[0]+' 전용 완료·기존 GH/상세 다음 예약':'파생 '+admission.step[0]+' 전용 대기·기존 상태/커서 보존';
+   }else{
+    if(p.getProperty('GH_ENABLED4')==='true')measureV4('GH 목록',()=>runGHJobsV4(ss,start+55000));
+    const phase=Number(p.getProperty('ANALYSIS_TURN42')||0),kind=phase%6===5?'후속':phase%3===2?'첨부':'상세';
+@@ -1147,7 +1152,7 @@
+    else result='목록 사용시간·분석 다음 예약';
+    if(Date.now()+65000<V4_END)runDerived42A(ss);
+   }
+-  if(/실제저장|실패|예산 대기/.test(result)||Date.now()-Number(p.getProperty('OPS_AT42')||0)>1800000){updateOps42(ss,result);p.setProperty('OPS_AT42',String(Date.now()));}p.setProperty('WORKER_OK4',nowKst());upsertTable(ss.getSheetByName('작업운영'),[['후처리',Utilities.formatDate(new Date(start),'Asia/Seoul','yyyy-MM-dd HH:mm:ss'),nowKst(),result,'4.2 상세/첨부 우선·상태 세부는 4.2운영점검',p.getProperty('WORKER_AUTO4')||'']]);
++  if(/실제저장|실패|예산 대기/.test(result)||Date.now()-Number(p.getProperty('OPS_AT42')||0)>1800000){updateOps42(ss,result);p.setProperty('OPS_AT42',String(Date.now()));}if(workerCompleted)p.setProperty('WORKER_OK4',nowKst());upsertTable(ss.getSheetByName('작업운영'),[['후처리',Utilities.formatDate(new Date(start),'Asia/Seoul','yyyy-MM-dd HH:mm:ss'),p.getProperty('WORKER_OK4')||'',result,'4.2 상세/첨부 우선·상태 세부는 4.2운영점검',p.getProperty('WORKER_AUTO4')||'']]);
+  }catch(err){result='실패 '+safeError(err);if(ss)ss.getSheetByName('처리오류이력').appendRow([nowKst(),'4.2 후처리','',result,'','다음 예약·커서 보존',safeError(err)]);throw err;
+  }finally{try{if(ss){V4_STAGE.push(['총 실행',Date.now()-start]);flushMetricsV4(ss,Utilities.formatDate(new Date(start),'Asia/Seoul','yyyy-MM-dd HH:mm:ss'),'후처리42',result);ss.getSheetByName('개발검증').appendRow(['4.2 후처리',V42_AUTO?'실제 시간 기반':'수동 실행',nowKst()+' | '+((Date.now()-start)/1000).toFixed(3)+'초 | '+result]);}}finally{resetV4();V42_AUTO=false;lock.releaseLock();}}
+ }
+@@ -1274,14 +1279,18 @@
+   sheets.set(name,wrapped);return wrapped;
+  };}});
+ }
++function derivedAdmission42A(p,now){
++ const phase=Number(p.getProperty('DERIVED_STEP42A')||0)%4,aux=Number(p.getProperty('DERIVED_AUX42A')||0)%4;
++ const maintenance=[['핵심정보',reconcileQualityV2],['첨부예외',reconcileExceptionsV3],['리마인더',prepareReminders35],['운영대시보드',s=>refreshMonitor(s,true)]];
++ const steps=[['공고판정',reconcileDecisionsV3],['지역정책',refreshRegionV4],['사용자현황판',refreshUserDashboardV4],maintenance[aux]],step=steps[phase];
++ const previous=Number(p.getProperty('DERIVED_COST42A_'+step[0])||0);
++ const slot=previous?Math.max(50000,Math.ceil(previous*1.08)):50000;
++ return {phase,aux,step,slot,timeFits:now+slot+15000<=V4_END,budget:budgetStatus42(p,'파생',now,slot)};
++}
+ function runDerived42A(ss){
+- const p=PropertiesService.getScriptProperties(),phase=Number(p.getProperty('DERIVED_STEP42A')||0)%4,aux=Number(p.getProperty('DERIVED_AUX42A')||0)%4;
+- const maintenance=[['핵심정보',reconcileQualityV2],['첨부예외',reconcileExceptionsV3],['리마인더',prepareReminders35],['운영대시보드',s=>refreshMonitor(s,true)]];
+- const steps=[['공고판정',reconcileDecisionsV3],['지역정책',refreshRegionV4],['사용자현황판',refreshUserDashboardV4],maintenance[aux]],step=steps[phase],now=Date.now();
+- // Initial plan stays conservative until this exact stage has been measured.
+- const previous=Number(p.getProperty('DERIVED_COST42A_'+step[0])||0),slot=previous?Math.max(50000,Math.ceil(previous*1.08)):50000; // 42.A3.2: 123s stage fits dedicated 180s window; never override actual budget
+- if(now+slot+15000>V4_END){p.setProperty('DERIVED_WAIT42A','실행시간 대기·'+step[0]);return false;}
+- const b=budgetStatus42(p,'파생',now,slot);if(!b.canRun){p.setProperty('DERIVED_WAIT42A',budgetWait42(b)+' · '+step[0]);return false;}
++ const p=PropertiesService.getScriptProperties(),{phase,aux,step,slot,timeFits,budget}=derivedAdmission42A(p,Date.now());
++ if(!timeFits){p.setProperty('DERIVED_WAIT42A','실행시간 대기·'+step[0]);return false;}
++ if(!budget.canRun){p.setProperty('DERIVED_WAIT42A',budgetWait42(budget)+' · '+step[0]);return false;}
+  // Dependent screen stages cannot be marked refreshed if preceding stages failed.
+  const view=cachedDerivedView42A(ss),start=Date.now();
+  let work;try{work=workBudget42(p,'파생',()=>measureV4('4.2A 파생 '+step[0],()=>step[1](view)),slot);}catch(e){p.setProperty('DERIVED_WAIT42A','단계 실패·'+step[0]+'·이전 정상시각 보존');throw e;}
